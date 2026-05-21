@@ -188,7 +188,7 @@ class Level:
         solid_tiles: str = "#",             # Solid blocks, full collision
         jump_through_tiles: str = "_",      # Platforms you can jump through from below
         spawn_tile: str = "P",              # Player spawn point, only one allowed
-        finish_tile: str = "F",             # Level exit / next level / cutscene / anything rly
+        finish_tile: str = "T",             # Level exit / next level / cutscene / anything rly
     ) -> "Level":
         platforms: List[Platform] = []
         spawn = (0, 0)
@@ -233,7 +233,7 @@ class World:
         self.entities: List[Entity] = []
         self.player: Optional[Entity] = None
         self.finish_tiles: List[pygame.Rect] = []
-        self.finish_wait_duration = 0.25
+        self.finish_wait_duration = 0.15                   # six seven
         self.finish_wait_time = 0.0
         self.camera = Camera(*viewport_size)
         self.bounds: Optional[pygame.Rect] = None
