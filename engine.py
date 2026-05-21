@@ -177,7 +177,7 @@ class Level:
     size: Tuple[int, int]
     platforms: List[Platform]
     spawn: Tuple[int, int]
-    finish: Optional[pygame.Rect] = None
+    finish_tiles: List[pygame.Rect]
     background: Color = (18, 18, 28)
 
     @classmethod
@@ -192,7 +192,7 @@ class Level:
     ) -> "Level":
         platforms: List[Platform] = []
         spawn = (0, 0)
-        finish: Optional[pygame.Rect] = None
+        finish_tiles: List[pygame.Rect] = []
 
         for y, row in enumerate(grid):
             for x, ch in enumerate(row):
@@ -211,7 +211,9 @@ class Level:
                 elif ch == spawn_tile:
                     spawn = (x * tile_size, y * tile_size)
                 elif ch == finish_tile:
-                    finish = pygame.Rect(x * tile_size, y * tile_size, tile_size, tile_size)
+                    finish_tiles.append(
+                        pygame.Rect(x * tile_size, y * tile_size, tile_size, tile_size)
+                    )
 
         width = max(len(row) for row in grid) * tile_size if grid else 0
         height = len(grid) * tile_size
@@ -219,7 +221,7 @@ class Level:
             size=(width, height),
             platforms=platforms,
             spawn=spawn,
-            finish=finish,
+            finish_tiles=finish_tiles,
             background=(18, 18, 28),
         )
 
@@ -230,8 +232,8 @@ class World:
         self.platforms: List[Platform] = []
         self.entities: List[Entity] = []
         self.player: Optional[Entity] = None
-        self.finish: Optional[pygame.Rect] = None
-        self.finish_wait_duration = 2.0
+        self.finish_tiles: List[pygame.Rect] = []
+        self.finish_wait_duration = 0.25
         self.finish_wait_time = 0.0
         self.camera = Camera(*viewport_size)
         self.bounds: Optional[pygame.Rect] = None
@@ -241,17 +243,20 @@ class World:
     def load_level(self, level: Level) -> Tuple[int, int]:
         self.platforms = list(level.platforms)
         self.bounds = pygame.Rect(0, 0, level.size[0], level.size[1])
-        self.finish = level.finish
+        self.finish_tiles = list(level.finish_tiles)
         self.finish_wait_time = 0.0
         self.background = level.background
         return level.spawn
 
     def player_touching_finish(self) -> bool:
-        if not self.player or self.finish is None:
+        if not self.player or not self.finish_tiles:
             return False
 
         stationary = self.player.vel.x == 0 and self.player.vel.y == 0
-        return stationary and self.player.rect.colliderect(self.finish)
+        return stationary and any(
+            self.player.rect.colliderect(finish_tile)
+            for finish_tile in self.finish_tiles
+        )
 
     def has_finish_wait_elapsed(self) -> bool:
         return self.finish_wait_time >= self.finish_wait_duration
