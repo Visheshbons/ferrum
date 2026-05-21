@@ -30,6 +30,7 @@ class InputState:
 class Platform:
     rect: pygame.Rect
     color: Color = (90, 90, 110)
+    jump_through: bool = False
 
     def draw(self, surface: pygame.Surface, camera: "Camera") -> None:
         pygame.draw.rect(surface, self.color, camera.apply_rect(self.rect))
@@ -83,6 +84,9 @@ class Entity:
         self.pos.x += self.vel.x * dt
         self.rect.x = int(round(self.pos.x))
         for platform in platforms:
+            # skip horizontal collisions for one-way (jump-through) platforms
+            if getattr(platform, "jump_through", False):
+                continue
             if self.rect.colliderect(platform.rect):
                 if self.vel.x > 0:
                     self.rect.right = platform.rect.left
@@ -91,17 +95,30 @@ class Entity:
                 self.pos.x = self.rect.x
                 self.vel.x = 0
 
+        # vertical movement with support for one-way (jump-through) platforms
+        prev_bottom = self.rect.bottom
         self.pos.y += self.vel.y * dt
         self.rect.y = int(round(self.pos.y))
         for platform in platforms:
             if self.rect.colliderect(platform.rect):
-                if self.vel.y > 0:
-                    self.rect.bottom = platform.rect.top
-                    self.on_ground = True
-                elif self.vel.y < 0:
-                    self.rect.top = platform.rect.bottom
-                self.pos.y = self.rect.y
-                self.vel.y = 0
+                # jump-through platforms only collide when falling from above
+                if platform.jump_through:
+                    if self.vel.y > 0 and prev_bottom <= platform.rect.top:
+                        self.rect.bottom = platform.rect.top
+                        self.on_ground = True
+                        self.pos.y = self.rect.y
+                        self.vel.y = 0
+                    else:
+                        # ignore collision when moving up or from the side
+                        continue
+                else:
+                    if self.vel.y > 0:
+                        self.rect.bottom = platform.rect.top
+                        self.on_ground = True
+                    elif self.vel.y < 0:
+                        self.rect.top = platform.rect.bottom
+                    self.pos.y = self.rect.y
+                    self.vel.y = 0
 
 
 class Player(Entity):
@@ -152,8 +169,9 @@ class Level:
         cls,
         grid: Sequence[str],
         tile_size: int = 32,
-        solid_tiles: str = "#",
-        spawn_tile: str = "P",
+        solid_tiles: str = "#",             # Solid blocks, full collision
+        jump_through_tiles: str = "_",      # Platforms you can jump through from below
+        spawn_tile: str = "P",              # Player spawn point, only one allowed
     ) -> "Level":
         platforms: List[Platform] = []
         spawn = (0, 0)
@@ -165,6 +183,13 @@ class Level:
                         x * tile_size, y * tile_size, tile_size, tile_size
                     )
                     platforms.append(Platform(rect))
+                elif ch in jump_through_tiles:
+                    rect = pygame.Rect(
+                        x * tile_size, y * tile_size, tile_size, tile_size
+                    )
+                    platforms.append(
+                        Platform(rect, color=(120, 120, 170), jump_through=True)
+                    )
                 elif ch == spawn_tile:
                     spawn = (x * tile_size, y * tile_size)
 
