@@ -57,7 +57,7 @@ def main() -> None:
     game = Game()
     world = World(game.screen.get_size())
 
-    current_level = 2
+    current_level = 1
     load_level_into_world(world, current_level)
 
     running = True
