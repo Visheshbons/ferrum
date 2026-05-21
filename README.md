@@ -15,8 +15,6 @@ We hope to see this repo grow.
    `pip install pygame`
 2. Run the demo:
    `python main.py`
-3. Convert a level text file to JSON:
-   `python convert_level.py levels/lv1.txt`
 
 <hr>
 
