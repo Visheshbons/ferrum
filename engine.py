@@ -15,14 +15,27 @@ class InputState:
     right: bool = False
     jump: bool = False
     jump_pressed: bool = False
+    left_pressed: bool = False
+    right_pressed: bool = False
     _jump_was_down: bool = False
+    _left_was_down: bool = False
+    _right_was_down: bool = False
 
     def update(self, keys: Sequence[bool]) -> None:
-        self.left = keys[pygame.K_LEFT] or keys[pygame.K_a]
-        self.right = keys[pygame.K_RIGHT] or keys[pygame.K_d]
+        left_down = keys[pygame.K_LEFT] or keys[pygame.K_a]
+        right_down = keys[pygame.K_RIGHT] or keys[pygame.K_d]
         jump_down = keys[pygame.K_SPACE] or keys[pygame.K_UP] or keys[pygame.K_w]
+
+        self.left_pressed = left_down and not self._left_was_down
+        self.right_pressed = right_down and not self._right_was_down
         self.jump_pressed = jump_down and not self._jump_was_down
+
+        self.left = left_down
+        self.right = right_down
         self.jump = jump_down
+
+        self._left_was_down = left_down
+        self._right_was_down = right_down
         self._jump_was_down = jump_down
 
 
@@ -145,6 +158,8 @@ class Player(Entity):
 
         if not input_state.left and not input_state.right:
             self.vel.x -= self.vel.x * min(1.0, self.friction * dt)
+            if abs(self.vel.x) < 1.0:
+                self.vel.x = 0
 
         if abs(self.vel.x) > self.max_speed:
             self.vel.x = math.copysign(self.max_speed, self.vel.x)
@@ -162,6 +177,7 @@ class Level:
     size: Tuple[int, int]
     platforms: List[Platform]
     spawn: Tuple[int, int]
+    finish: Optional[pygame.Rect] = None
     background: Color = (18, 18, 28)
 
     @classmethod
@@ -172,9 +188,11 @@ class Level:
         solid_tiles: str = "#",             # Solid blocks, full collision
         jump_through_tiles: str = "_",      # Platforms you can jump through from below
         spawn_tile: str = "P",              # Player spawn point, only one allowed
+        finish_tile: str = "F",             # Level exit / next level / cutscene / anything rly
     ) -> "Level":
         platforms: List[Platform] = []
         spawn = (0, 0)
+        finish: Optional[pygame.Rect] = None
 
         for y, row in enumerate(grid):
             for x, ch in enumerate(row):
@@ -192,10 +210,18 @@ class Level:
                     )
                 elif ch == spawn_tile:
                     spawn = (x * tile_size, y * tile_size)
+                elif ch == finish_tile:
+                    finish = pygame.Rect(x * tile_size, y * tile_size, tile_size, tile_size)
 
         width = max(len(row) for row in grid) * tile_size if grid else 0
         height = len(grid) * tile_size
-        return cls((width, height), platforms, spawn)
+        return cls(
+            size=(width, height),
+            platforms=platforms,
+            spawn=spawn,
+            finish=finish,
+            background=(18, 18, 28),
+        )
 
 
 class World:
@@ -204,6 +230,9 @@ class World:
         self.platforms: List[Platform] = []
         self.entities: List[Entity] = []
         self.player: Optional[Entity] = None
+        self.finish: Optional[pygame.Rect] = None
+        self.finish_wait_duration = 2.0
+        self.finish_wait_time = 0.0
         self.camera = Camera(*viewport_size)
         self.bounds: Optional[pygame.Rect] = None
         self.input_state = InputState()
@@ -212,8 +241,29 @@ class World:
     def load_level(self, level: Level) -> Tuple[int, int]:
         self.platforms = list(level.platforms)
         self.bounds = pygame.Rect(0, 0, level.size[0], level.size[1])
+        self.finish = level.finish
+        self.finish_wait_time = 0.0
         self.background = level.background
         return level.spawn
+
+    def player_touching_finish(self) -> bool:
+        if not self.player or self.finish is None:
+            return False
+
+        stationary = self.player.vel.x == 0 and self.player.vel.y == 0
+        return stationary and self.player.rect.colliderect(self.finish)
+
+    def has_finish_wait_elapsed(self) -> bool:
+        return self.finish_wait_time >= self.finish_wait_duration
+
+    def tick_finish_wait(self, dt: float) -> bool:
+        self.finish_wait_time = min(
+            self.finish_wait_duration, self.finish_wait_time + dt
+        )
+        return self.has_finish_wait_elapsed()
+
+    def reset_finish_wait(self) -> None:
+        self.finish_wait_time = 0.0
 
     def add_entity(self, entity: Entity, is_player: bool = False) -> None:
         self.entities.append(entity)
