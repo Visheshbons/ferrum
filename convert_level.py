@@ -15,6 +15,13 @@ def load_level_json(level_name: str | Path) -> list[str]:
     if not level_path.is_absolute():
         level_path = levels_dir / level_path
 
+    if not level_path.exists():
+        source_path = level_path.with_suffix(".txt")
+        if not source_path.exists():
+            raise FileNotFoundError(f"No level data found for {level_path.stem}")
+
+        convert_level_text_to_json(source_path, level_path)
+
     data = json.loads(level_path.read_text(encoding="utf-8"))
     if not isinstance(data, list) or not all(isinstance(row, str) for row in data):
         raise ValueError(f"Invalid level data in {level_path}")
