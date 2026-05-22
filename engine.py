@@ -233,7 +233,7 @@ class World:
         self.entities: List[Entity] = []
         self.player: Optional[Entity] = None
         self.finish_tiles: List[pygame.Rect] = []
-        self.finish_wait_duration = 0.15                   # six seven
+        # self.finish_wait_duration = 0.15                   # six seven
         self.finish_wait_time = 0.0
         self.camera = Camera(*viewport_size)
         self.bounds: Optional[pygame.Rect] = None
@@ -258,14 +258,15 @@ class World:
             for finish_tile in self.finish_tiles
         )
 
-    def has_finish_wait_elapsed(self) -> bool:
-        return self.finish_wait_time >= self.finish_wait_duration
+    # def has_finish_wait_elapsed(self) -> bool:
+    #     return self.finish_wait_time >= self.finish_wait_duration
 
     def tick_finish_wait(self, dt: float) -> bool:
-        self.finish_wait_time = min(
-            self.finish_wait_duration, self.finish_wait_time + dt
-        )
-        return self.has_finish_wait_elapsed()
+        # self.finish_wait_time = min(
+        #     self.finish_wait_duration, self.finish_wait_time + dt
+        # )
+        # return self.has_finish_wait_elapsed()
+        return True
 
     def reset_finish_wait(self) -> None:
         self.finish_wait_time = 0.0
