@@ -11,6 +11,12 @@ from engine import Game, Level, Player, World
 LEVELS_DIR = Path(__file__).resolve().parent / "levels"
 
 
+def delete_level_json(level_number: int) -> None:
+    level_json_path = LEVELS_DIR / f"lv{level_number}.json"
+    if level_json_path.exists():
+        level_json_path.unlink()
+
+
 def build_level(level) -> Level:
     grid = load_level_json(f"lv{level}")
     return Level.from_grid(grid, tile_size=32)
@@ -81,6 +87,7 @@ def main() -> None:
             ):
                 world.reset_finish_wait()
             elif world.tick_finish_wait(dt):
+                delete_level_json(current_level)
                 next_level = next_level_number(current_level)
                 if next_level is not None:
                     current_level = next_level
