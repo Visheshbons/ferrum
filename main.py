@@ -2,22 +2,37 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import pygame
 
 from convert_level import load_level_json
 from engine import Game, Level, Player, World
+from editor import run_editor
 
 
 LEVELS_DIR = Path(__file__).resolve().parent / "levels"
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Create the command-line interface for game and editor launch modes."""
+    parser = argparse.ArgumentParser(description="Ferrum")
+    parser.add_argument(
+        "--edit",
+        nargs="?",
+        const=LEVELS_DIR / "untitled.world",
+        type=Path,
+        help="Open the world editor instead of the game.",
+    )
+    return parser
 
 
 def delete_level_json(level_number: int) -> None:
     """Remove the generated JSON file for a level after it has been cleared."""
     level_json_path = LEVELS_DIR / f"lv{level_number}.json"
     if level_json_path.exists():
-        # Clean up the converted level so the next run starts from the source text file.
+        # Clean up the converted level so the next run starts from the source world file.
         level_json_path.unlink()
 
 
@@ -37,7 +52,7 @@ def next_level_number(current_level: int) -> int | None:
     level_numbers = sorted(
         {
             int(path.stem[2:])
-            for path in LEVELS_DIR.glob("lv*.txt")
+            for path in LEVELS_DIR.glob("lv*.world")
             if path.stem[2:].isdigit()
         }
         | {
@@ -70,6 +85,11 @@ def load_level_into_world(world: World, level_number: int) -> Player:
 
 def main() -> None:
     """Run the main game loop and advance through levels in sequence."""
+    args = build_parser().parse_args()
+    if args.edit is not None:
+        run_editor(args.edit)
+        return
+
     game = Game()
     world = World(game.screen.get_size())
 

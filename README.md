@@ -15,6 +15,12 @@ We hope to see this repo grow.
    `pip install pygame`
 2. Run the demo:
    `python main.py`
+3. Open the world editor:
+   `python main.py --edit levels/lv1.world`
+
+## World Editor
+
+The editor writes Ferrum world files using run-length encoding. Save with `Ctrl+S`, then run the game again to let it decode and compile the updated `.world` into the cached JSON the first time it is loaded. Old uncompressed `.txt` levels can still be loaded by the converter if needed, but new saves use `.world`.
 
 <hr>
 

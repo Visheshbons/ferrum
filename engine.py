@@ -237,7 +237,7 @@ class Level:
                         pygame.Rect(x * tile_size, y * tile_size, tile_size, tile_size)
                     )
 
-        # Derive level dimensions from the textual grid.
+        # Derive level dimensions from the WORLDual grid.
         width = max(len(row) for row in grid) * tile_size if grid else 0
         height = len(grid) * tile_size
         return cls(
