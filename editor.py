@@ -15,18 +15,20 @@ UI_HEIGHT = 72
 TILE_SIZE = 32
 PAN_SPEED = 900
 
-TILE_ORDER = [".", "#", "_", "P", "T"]
+TILE_ORDER = [".", "#", "_", "X", "P", "T"]
 TILE_KEYS = {
     pygame.K_1: ".",
     pygame.K_2: "#",
     pygame.K_3: "_",
-    pygame.K_4: "P",
-    pygame.K_5: "T",
+    pygame.K_4: "X",
+    pygame.K_5: "P",
+    pygame.K_6: "T",
 }
 TILE_COLORS = {
     ".": (30, 30, 42),
     "#": (95, 95, 120),
     "_": (135, 135, 185),
+    "X": (78, 78, 94),
     "P": (125, 205, 255),
     "T": (255, 178, 92),
 }

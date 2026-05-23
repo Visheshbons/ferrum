@@ -56,6 +56,17 @@ class Platform:
         pygame.draw.rect(surface, self.color, camera.apply_rect(self.rect))
 
 
+@dataclass
+class VisualTile:
+    """Represent a level tile that is visible but has no collision."""
+    rect: pygame.Rect
+    color: Color = (70, 70, 84)
+
+    def draw(self, surface: pygame.Surface, camera: "Camera") -> None:
+        """Render the decorative tile after translating it into camera space."""
+        pygame.draw.rect(surface, self.color, camera.apply_rect(self.rect))
+
+
 class Camera:
     """Track a viewport-sized offset that follows the player around the level."""
     def __init__(self, width: int, height: int) -> None:
@@ -196,6 +207,7 @@ class Level:
     """Describe a parsed level, including geometry, spawn, and finish tiles."""
     size: Tuple[int, int]
     platforms: List[Platform]
+    visual_tiles: List[VisualTile]
     spawn: Tuple[int, int]
     finish_tiles: List[pygame.Rect]
     background: Color = (18, 18, 28)
@@ -207,11 +219,13 @@ class Level:
         tile_size: int = 32,
         solid_tiles: str = "#",             # Solid blocks, full collision
         jump_through_tiles: str = "_",      # Platforms you can jump through from below
+        visual_tiles: str = "X",            # Tiles that only render and do not collide
         spawn_tile: str = "P",              # Player spawn point, only one allowed
         finish_tile: str = "T",             # Level exit / next level / cutscene / anything rly
     ) -> "Level":
         """Convert an ASCII tile grid into geometry and spawn metadata."""
         platforms: List[Platform] = []
+        decorative_tiles: List[VisualTile] = []
         spawn = (0, 0)
         finish_tiles: List[pygame.Rect] = []
 
@@ -230,6 +244,11 @@ class Level:
                     platforms.append(
                         Platform(rect, color=(120, 120, 170), jump_through=True)
                     )
+                elif ch in visual_tiles:
+                    rect = pygame.Rect(
+                        x * tile_size, y * tile_size, tile_size, tile_size
+                    )
+                    decorative_tiles.append(VisualTile(rect, color=(72, 72, 88)))
                 elif ch == spawn_tile:
                     spawn = (x * tile_size, y * tile_size)
                 elif ch == finish_tile:
@@ -243,6 +262,7 @@ class Level:
         return cls(
             size=(width, height),
             platforms=platforms,
+            visual_tiles=decorative_tiles,
             spawn=spawn,
             finish_tiles=finish_tiles,
             background=(18, 18, 28),
@@ -254,6 +274,7 @@ class World:
     def __init__(self, viewport_size: Tuple[int, int], gravity: float = 2000) -> None:
         self.gravity = gravity
         self.platforms: List[Platform] = []
+        self.visual_tiles: List[VisualTile] = []
         self.entities: List[Entity] = []
         self.player: Optional[Entity] = None
         self.finish_tiles: List[pygame.Rect] = []
@@ -267,6 +288,7 @@ class World:
     def load_level(self, level: Level) -> Tuple[int, int]:
         """Replace the current level data and return the level's player spawn point."""
         self.platforms = list(level.platforms)
+        self.visual_tiles = list(level.visual_tiles)
         self.bounds = pygame.Rect(0, 0, level.size[0], level.size[1])
         self.finish_tiles = list(level.finish_tiles)
         self.finish_wait_time = 0.0
@@ -318,6 +340,8 @@ class World:
     def draw(self, surface: pygame.Surface) -> None:
         """Paint the world background, platforms, and entities to the screen."""
         surface.fill(self.background)
+        for visual_tile in self.visual_tiles:
+            visual_tile.draw(surface, self.camera)
         for platform in self.platforms:
             platform.draw(surface, self.camera)
         for entity in self.entities:
