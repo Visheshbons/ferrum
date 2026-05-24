@@ -24,7 +24,7 @@ vishesh@fedora:~$
 
 For Debain-based systems with APT as the package manager, run
 ```bash
-sudo apt install python3.14
+sudo apt install python3
 ```
 
 For Red Hat based systems with the DNF package manager, run
