@@ -22,28 +22,35 @@ class InputState:
     jump_pressed: bool = False
     left_pressed: bool = False
     right_pressed: bool = False
+    dash_pressed: bool = False
+    dash: bool = False
     _jump_was_down: bool = False
     _left_was_down: bool = False
     _right_was_down: bool = False
+    _dash_was_down: bool = False
 
     def update(self, keys: Sequence[bool]) -> None:
         """Update held and pressed flags from the pygame keyboard matrix."""
         left_down = keys[pygame.K_LEFT] or keys[pygame.K_a]
         right_down = keys[pygame.K_RIGHT] or keys[pygame.K_d]
         jump_down = keys[pygame.K_SPACE] or keys[pygame.K_UP] or keys[pygame.K_w]
+        dash_pressed = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
 
         # Rising-edge detection lets the game react once per key press.
         self.left_pressed = left_down and not self._left_was_down
         self.right_pressed = right_down and not self._right_was_down
         self.jump_pressed = jump_down and not self._jump_was_down
+        self.dash_pressed = dash_pressed and not self._dash_was_down
 
         self.left = left_down
         self.right = right_down
         self.jump = jump_down
+        self.dash = dash_pressed
 
         self._left_was_down = left_down
         self._right_was_down = right_down
         self._jump_was_down = jump_down
+        self._dash_was_down = dash_pressed
 
 
 @dataclass
@@ -209,6 +216,13 @@ class Player(Entity):
         super().__init__(x, y, width, height, color, texture, texture_alignment)
         self.accel = 2000  # Horizontal acceleration applied while a direction is held.
         self.max_speed = 240  # Clamp top speed so movement stays controllable.
+        self.dash_speed = 3000  # Velocity used while dashing (px/s)
+        self.dash_duration = 0.15  # Dash time (seconds)
+        self.dash_timer = 0.0
+        self.dash_active = False
+        self.dash_direction = 1.0
+        self.post_dash_grace = 0.1  # Delay
+        self.dash_recover_timer = 5000.0
         self.jump_speed = 650  # Vertical launch speed used when the player jumps.
         self.friction = 12  # Ground drag applied when no horizontal input is pressed.
         # Double-jump can be disabled when stuff like effects are active
@@ -219,18 +233,50 @@ class Player(Entity):
     def update(self, dt: float, world: "World") -> None:
         """Read player input, apply movement forces, and resolve collisions."""
         input_state = world.input_state
-        if input_state.left:
-            self.vel.x -= self.accel * dt
-        if input_state.right:
-            self.vel.x += self.accel * dt
+        # ignore while dahsing
+        if not self.dash_active:
+            if input_state.left:
+                self.vel.x -= self.accel * dt
+            if input_state.right:
+                self.vel.x += self.accel * dt
 
-        if not input_state.left and not input_state.right:
+        if not self.dash_active and not input_state.left and not input_state.right:
             self.vel.x -= self.vel.x * min(1.0, self.friction * dt)
             if abs(self.vel.x) < 1.0:
                 self.vel.x = 0
 
-        if abs(self.vel.x) > self.max_speed:
-            self.vel.x = math.copysign(self.max_speed, self.vel.x)
+        # Dash
+        if input_state.dash_pressed and not self.dash_active:
+            if input_state.left:
+                dir_sign = -1.0
+            elif input_state.right:
+                dir_sign = 1.0
+            else:
+                dir_sign = math.copysign(1.0, self.vel.x) if self.vel.x != 0 else 1.0
+            self.dash_active = True
+            self.dash_timer = self.dash_duration
+            self.dash_direction = dir_sign
+            # Immediately set dash velocity
+            self.vel.x = self.dash_direction * self.dash_speed
+
+        # Maintain dash for its duration (ignore friction/accel while active)
+        if self.dash_active:
+            self.dash_timer -= dt
+            if self.dash_timer > 0:
+                self.vel.x = self.dash_direction * self.dash_speed
+            else:
+                # Dash ended: delay integration
+                self.dash_active = False
+                self.dash_recover_timer = self.post_dash_grace
+
+        # Decrease delay timer
+        if self.dash_recover_timer > 0:
+            self.dash_recover_timer -= dt
+
+        # Clamp horizontal speed only when not dashing and not in post-dash grace.
+        if not self.dash_active and self.dash_recover_timer <= 0:
+            if abs(self.vel.x) > self.max_speed:
+                self.vel.x = math.copysign(self.max_speed, self.vel.x)
 
         # Jumping logic (supports double jump)
         if input_state.jump_pressed and self.jumps_remaining > 0:
