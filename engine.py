@@ -101,12 +101,14 @@ class Entity:
         width: int,
         height: int,
         color: Color = (220, 220, 240),
+        texture: str = "",
     ) -> None:
         self.pos = pygame.Vector2(x, y)
         self.rect = pygame.Rect(int(x), int(y), width, height)
         self.vel = pygame.Vector2(0, 0)
         self.color = color
-        self.on_ground = False
+        self.texture = texture
+        self.on_ground = 0 # Ternary btw
 
     def update(self, dt: float, world: "World") -> None:
         """Apply gravity and resolve movement for the frame."""
@@ -115,11 +117,15 @@ class Entity:
 
     def draw(self, surface: pygame.Surface, camera: Camera) -> None:
         """Draw the entity using the camera offset."""
-        pygame.draw.rect(surface, self.color, camera.apply_rect(self.rect))
+        if self.texture:
+            # write some logic future me (pls) <----------------------------------------------------------- ADD TEXTURE LOGIC HERE
+            pass
+        else:
+            pygame.draw.rect(surface, self.color, camera.apply_rect(self.rect))
 
     def move_and_collide(self, platforms: Iterable[Platform], dt: float) -> None:
         """Move along each axis and stop when colliding with platforms."""
-        self.on_ground = False
+        self.on_ground = 0
         self.pos.x += self.vel.x * dt
         self.rect.x = int(round(self.pos.x))
         for platform in platforms:
@@ -144,7 +150,7 @@ class Entity:
                 if platform.jump_through:
                     if self.vel.y > 0 and prev_bottom <= platform.rect.top:
                         self.rect.bottom = platform.rect.top
-                        self.on_ground = True
+                        self.on_ground = 1
                         self.pos.y = self.rect.y
                         self.vel.y = 0
                     else:
@@ -153,7 +159,7 @@ class Entity:
                 else:
                     if self.vel.y > 0:
                         self.rect.bottom = platform.rect.top
-                        self.on_ground = True
+                        self.on_ground = 1
                     elif self.vel.y < 0:
                         self.rect.top = platform.rect.bottom
                     self.pos.y = self.rect.y
@@ -169,12 +175,18 @@ class Player(Entity):
         width: int = 28,
         height: int = 40,
         color: Color = (130, 190, 255),
+        texture: str = "",
+        double_jump: bool = True,
     ) -> None:
-        super().__init__(x, y, width, height, color)
+        super().__init__(x, y, width, height, color, texture)
         self.accel = 2000  # Horizontal acceleration applied while a direction is held.
         self.max_speed = 240  # Clamp top speed so movement stays controllable.
         self.jump_speed = 650  # Vertical launch speed used when the player jumps.
         self.friction = 12  # Ground drag applied when no horizontal input is pressed.
+        # Double-jump can be disabled when stuff like effects are active
+        self.double_jump_enabled = double_jump
+        self.max_jumps = 2 if self.double_jump_enabled else 1
+        self.jumps_remaining = self.max_jumps
 
     def update(self, dt: float, world: "World") -> None:
         """Read player input, apply movement forces, and resolve collisions."""
@@ -192,14 +204,18 @@ class Player(Entity):
         if abs(self.vel.x) > self.max_speed:
             self.vel.x = math.copysign(self.max_speed, self.vel.x)
 
-        # Only jump when the press is new and the player is on the ground.
-        if input_state.jump_pressed and self.on_ground:
+        # Jumping logic (supports double jump)
+        if input_state.jump_pressed and self.jumps_remaining > 0:
             self.vel.y = -self.jump_speed
-            self.on_ground = False
+            self.jumps_remaining -= 1
 
         # Gravity is applied here so the player follows the same physics model as other entities.
         self.vel.y += world.gravity * dt
         self.move_and_collide(world.platforms, dt)
+
+        # Reset available jumps when landing on the ground.
+        if self.on_ground == 1:
+            self.jumps_remaining = self.max_jumps
 
 
 @dataclass
