@@ -43,7 +43,7 @@ def build_level(level) -> Level:
 
 
 def player_touching_finish(world: World) -> bool:
-    """Check whether the player is standing still on a finish tile."""
+    """Check whether the player is touching a finish tile."""
     return world.player_touching_finish()
 
 
@@ -114,28 +114,17 @@ def main() -> None:
         # Advance the world one frame.
         world.update(dt, game.input_state)
 
-        # Only progress when the player is touching the exit and has paused briefly.
+        # Progress immediately when the player touches the exit.
         if player_touching_finish(world):
-            if (
-                game.input_state.left_pressed
-                or game.input_state.right_pressed
-                or game.input_state.jump_pressed
-            ):
-                # Any movement input cancels the finish wait.
-                world.reset_finish_wait()
-            elif world.tick_finish_wait(dt):
-                # Remove the completed level and advance if another one exists.
-                delete_level_json(current_level)
-                next_level = next_level_number(current_level)
-                if next_level is not None:
-                    current_level = next_level
-                    load_level_into_world(world, current_level)
-                else:
-                    # No further levels remain, so exit the game loop.
-                    running = False
-        else:
-            # Reset the finish timer whenever the player leaves the exit.
-            world.reset_finish_wait()
+            # Remove the completed level and advance if another one exists.
+            delete_level_json(current_level)
+            next_level = next_level_number(current_level)
+            if next_level is not None:
+                current_level = next_level
+                load_level_into_world(world, current_level)
+            else:
+                # No further levels remain, so exit the game loop.
+                running = False
 
         # Draw the current frame and present it to the display.
         world.draw(game.screen)

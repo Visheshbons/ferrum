@@ -222,7 +222,7 @@ class Player(Entity):
         self.dash_active = False
         self.dash_direction = 1.0
         self.post_dash_grace = 0.1  # Delay
-        self.dash_recover_timer = 5000.0
+        self.dash_recover_timer = 0.0
         self.jump_speed = 650  # Vertical launch speed used when the player jumps.
         self.friction = 12  # Ground drag applied when no horizontal input is pressed.
         # Double-jump can be disabled when stuff like effects are active
@@ -386,13 +386,14 @@ class World:
         return level.spawn
 
     def player_touching_finish(self) -> bool:
-        """Report whether a motionless player overlaps any finish tile."""
+        """Report whether the player overlaps any finish tile."""
         if not self.player or not self.finish_tiles:
             return False
 
-        # The exit only counts once the player has come to a complete stop.
-        stationary = self.player.vel.x == 0 and self.player.vel.y == 0
-        return stationary and any(
+        # # The exit only counts once the player has come to a complete stop.
+        # stationary = self.player.vel.x == 0 and self.player.vel.y == 0
+        # return stationary and any(
+        return any(
             self.player.rect.colliderect(finish_tile)
             for finish_tile in self.finish_tiles
         )
