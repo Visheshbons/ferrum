@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Sequence, Tuple
 
 import pygame
 
 Color = Tuple[int, int, int]
+# PLAYER_TEXTURE_PATH = Path(__file__).resolve().parent / "assets" / "sprites" / "7754-uno-reverse.png"
 
 
 @dataclass
@@ -102,13 +104,36 @@ class Entity:
         height: int,
         color: Color = (220, 220, 240),
         texture: str = "",
+        texture_alignment: str = "center",
     ) -> None:
         self.pos = pygame.Vector2(x, y)
         self.rect = pygame.Rect(int(x), int(y), width, height)
         self.vel = pygame.Vector2(0, 0)
         self.color = color
         self.texture = texture
+        self.texture_alignment = texture_alignment
+        self.texture_surface: Optional[pygame.Surface] = None
         self.on_ground = 0 # Ternary btw
+
+    def load_texture(self) -> Optional[pygame.Surface]:
+        """Load and cache the entity texture if one is configured."""
+        if not self.texture:
+            return None
+        if self.texture_surface is None:
+            self.texture_surface = pygame.image.load(self.texture).convert_alpha()
+        return self.texture_surface
+
+    def get_texture_rect(self, texture_surface: pygame.Surface) -> pygame.Rect:
+        """Position the texture relative to the entity according to alignment."""
+        texture_rect = texture_surface.get_rect()
+        texture_rect.centerx = self.rect.centerx
+        if self.texture_alignment == "top":
+            texture_rect.top = self.rect.top
+        elif self.texture_alignment == "bottom":
+            texture_rect.bottom = self.rect.bottom
+        else:
+            texture_rect.centery = self.rect.centery
+        return texture_rect
 
     def update(self, dt: float, world: "World") -> None:
         """Apply gravity and resolve movement for the frame."""
@@ -117,11 +142,13 @@ class Entity:
 
     def draw(self, surface: pygame.Surface, camera: Camera) -> None:
         """Draw the entity using the camera offset."""
-        if self.texture:
-            # write some logic future me (pls) <----------------------------------------------------------- ADD TEXTURE LOGIC HERE
-            pass
-        else:
-            pygame.draw.rect(surface, self.color, camera.apply_rect(self.rect))
+        texture_surface = self.load_texture()
+        if texture_surface is not None:
+            texture_rect = self.get_texture_rect(texture_surface)
+            surface.blit(texture_surface, camera.apply_rect(texture_rect))
+            return
+
+        pygame.draw.rect(surface, self.color, camera.apply_rect(self.rect))
 
     def move_and_collide(self, platforms: Iterable[Platform], dt: float) -> None:
         """Move along each axis and stop when colliding with platforms."""
@@ -175,10 +202,11 @@ class Player(Entity):
         width: int = 28,
         height: int = 40,
         color: Color = (130, 190, 255),
-        texture: str = "",
+        texture: str = "", # str(PLAYER_TEXTURE_PATH),
+        texture_alignment: str = "bottom",
         double_jump: bool = True,
     ) -> None:
-        super().__init__(x, y, width, height, color, texture)
+        super().__init__(x, y, width, height, color, texture, texture_alignment)
         self.accel = 2000  # Horizontal acceleration applied while a direction is held.
         self.max_speed = 240  # Clamp top speed so movement stays controllable.
         self.jump_speed = 650  # Vertical launch speed used when the player jumps.
